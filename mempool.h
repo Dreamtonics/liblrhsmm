@@ -22,7 +22,7 @@
 #ifndef LRHSMM_MEMPOOL_H
 #define LRHSMM_MEMPOOL_H
 
-#include <unistd.h>
+#include <stddef.h>
 
 // linked list based memory pool implementation for reducing time spent on
 //   frequent mallocs in the inference of state duration and mixture occupancy

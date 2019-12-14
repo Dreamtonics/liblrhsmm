@@ -1,10 +1,9 @@
 PREFIX = /usr
-CC = gcc
-LINK = gcc
-AR = ar
+CC ?= gcc
+AR ?= ar
 
-FP_TYPE = float
-CONFIG  = Debug
+FP_TYPE ?= float
+CONFIG  ?= Debug
 
 LRHSMM_SERIALIZATION = true
 
@@ -23,8 +22,13 @@ endif
 
 ARFLAGS = -rv
 CFLAGS_COMMON = -DFP_TYPE=$(FP_TYPE) -std=c99 -Wall -fPIC
-CFLAGS_DBG = $(CFLAGS_COMMON) -Og -g
-CFLAGS_REL = $(CFLAGS_COMMON) -Ofast
+ifeq ($(CXX), emcc)
+  CFLAGS_DBG = $(CFLAGS_COMMON) -O1 -g -D_DEBUG
+  CFLAGS_REL = $(CFLAGS_COMMON) -O3
+else
+  CFLAGS_DBG = $(CFLAGS_COMMON) -Og -g -D_DEBUG
+  CFLAGS_REL = $(CFLAGS_COMMON) -Ofast
+endif
 ifeq ($(CONFIG), Debug)
   CFLAGS = $(CFLAGS_DBG)
 else
@@ -33,33 +37,33 @@ endif
 
 default: $(OUT_DIR)/liblrhsmm.a
 
-test: test/test-mempool test/test-random-model test/test-state-jumps 
-	test/test-mempool
-	test/test-random-model
-	test/test-state-jumps
+test: test-mempool test-random-model test-state-jumps 
+.PRECIOUS: $(OUT_DIR)/test-mempool \
+	$(OUT_DIR)/test-random-model \
+	$(OUT_DIR)/test-state-jumps \
+	$(OUT_DIR)/test-mempool.js \
+	$(OUT_DIR)/test-random-model.js \
+	$(OUT_DIR)/test-state-jumps.js
 
-test-mempool: test/test-mempool
-	test/test-mempool
-test-random-model: test/test-random-model
-	test/test-random-model
-test-jumps: test/test-state-jumps
-	test/test-state-jumps
+ifeq ($(CXX), emcc)
+test-%: $(OUT_DIR)/test-%.js
+	node $(OUT_DIR)/test-$*.js
+else
+test-%: $(OUT_DIR)/test-%
+	$(OUT_DIR)/test-$*
+endif
 
 $(OUT_DIR)/liblrhsmm.a: $(OBJS)
 	$(AR) $(ARFLAGS) $(OUT_DIR)/liblrhsmm.a $(OBJS)
 	@echo Done.
 
-test/test-random-model: test/test-random-model.c test/test-common.h $(OUT_DIR)/liblrhsmm.a
-	$(LINK) test/test-random-model.c $(OUT_DIR)/liblrhsmm.a $(CFLAGS) -Wno-unused-function \
-	  -lm -o test/test-random-model
+$(OUT_DIR)/test-%: test/test-%.c test/test-common.h $(OUT_DIR)/liblrhsmm.a
+	$(CC) test/test-$*.c $(OUT_DIR)/liblrhsmm.a $(CFLAGS) -Wno-unused-function \
+	  -lm -o $(OUT_DIR)/test-$*
 
-test/test-state-jumps: test/test-state-jumps.c test/test-common.h $(OUT_DIR)/liblrhsmm.a
-	$(LINK) test/test-state-jumps.c $(OUT_DIR)/liblrhsmm.a $(CFLAGS) -Wno-unused-function \
-	  -lm -o test/test-state-jumps
-
-test/test-mempool: test/test-mempool.c $(OUT_DIR)/liblrhsmm.a
-	$(LINK) test/test-mempool.c $(OUT_DIR)/liblrhsmm.a $(CFLAGS) -Wno-unused-function \
-	  -lm -o test/test-mempool
+$(OUT_DIR)/test-%.js: test/test-%.c test/test-common.h $(OUT_DIR)/liblrhsmm.a
+	$(CC) test/test-$*.c $(OUT_DIR)/liblrhsmm.a $(CFLAGS) -Wno-unused-function \
+	  -lm -o $(OUT_DIR)/test-$*.js -s TOTAL_MEMORY=512MB
 
 $(OUT_DIR)/common.o: common.c common.h
 $(OUT_DIR)/mempool.o: mempool.c mempool.h

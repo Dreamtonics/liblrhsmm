@@ -161,7 +161,7 @@ int main() {
       total_lh += lrh_estimate(hstat, h, dataset_ob -> samples[i], dataset_seg -> samples[i]);
     if(total_lh >= total_best)
       total_best = total_lh;
-    else if(total_lh < total_best - 1.0) { // taking numerical error into account
+    else if(total_lh < total_best - 2.0) { // taking numerical error into account
       fprintf(stderr, "Error: training doesn't converge!\n");
       exit(1);
     }
